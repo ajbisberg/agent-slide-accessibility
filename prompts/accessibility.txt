@@ -1,0 +1,112 @@
+Do a full accessibility-improvement pass on the slide deck `<slides>`. Its origin markdown files is <md>. Save new copies of both files to path/to/slides/accessible/<slides>.accessible.pdf and path/to/slides/accessible/<slides>.accessible.md upon completion. Do not overwrite existing files.
+
+The slides are Marp markdown. The rendered PDF is usually the same basename with `.pdf` instead of `.md`.
+
+Goal:
+- Improve accessibility for screen readers and PDF/UA compliance as much as possible.
+- Preserve the slide style and overall visual design.
+- Preserve slide text and intent. You may adjust tags / HTML structure / markup when needed for accessibility.
+- Work iteratively. Do not stop after one pass if there are clear next steps.
+
+Workflow:
+
+1. Start by inspecting the Marp markdown source and the current rendered PDF.
+2. Run the accessibility checker script:
+   - `scripts/check_pdf_accessibility.py <pdf>`
+3. Read the generated plain-text accessibility report and raw veraPDF JSON.
+4. Produce an initial findings report before making changes.
+   - Explain the issues in plain language.
+   - Separate likely source-level problems from likely export-pipeline / renderer problems.
+   - Point to the exact markdown locations that seem responsible when possible.
+
+Then iterate:
+
+5. Make the most promising source-level fixes in the Marp markdown first.
+   Prioritize:
+   - heading hierarchy
+   - image alt text
+   - list structure
+   - raw HTML that may produce better semantic output than markdown in Marp
+   - link text that is descriptive to humans
+   - avoiding markdown constructs that produce problematic PDF tags
+6. Re-render the PDF.
+7. Re-run `scripts/check_pdf_accessibility.py`.
+8. Compare the new results to the previous run.
+9. Report what improved, what did not, and what now appears to be blocked by the Marp -> HTML -> PDF export path.
+10. Repeat until the remaining issues are no longer plausibly fixable in the markdown source alone.
+11. Do a pass on the newly rendered slides and compare them to the old slides using prompts\review-slides.txt
+  - did any of the formatting change significantly?
+    - this may include: list alignment (e.g. moving from left aligned to center aligned), photo size, or something else 
+12. If the style diverges attempt to make the accessible slides fit AS CLOSELY AS POSSIBLE to the original slides.
+
+Important guidance from prior runs:
+
+- Marp raw HTML is allowed and should be considered when markdown semantics are unhelpful.
+- Preserve the style, but if tags / raw HTML structure need to change, that is acceptable.
+- Distinguish carefully between:
+  - source issues that can be fixed in the `.md`
+  - export issues caused by Chromium / Marp PDF generation
+
+What we already learned from this workflow:
+
+- Raw HTML links in Marp do not by themselves fix veraPDF link-annotation failures.
+- HTML comments in Marp act like presenter notes.
+- In normal PDF export, those comments do not help with metadata.
+- In `--pdf-notes` export, comments become PDF note annotations, which can create additional accessibility problems.
+- “Invisible text” hacks such as white-on-white text or off-slide text should not be used as metadata substitutes because they can survive as real PDF text and make accessibility worse.
+
+When investigating remaining failures:
+
+- If the report still shows missing link annotation descriptions (`/Contents`) or missing PDF metadata stream / PDF/UA identification, assume those are probably exporter-side problems unless proven otherwise.
+- If the report still shows untagged/artifact content on early slides, explain that this usually means the visible slide content is not properly attached to the PDF structure tree, even if it looks visually correct.
+
+If markdown fixes are exhausted:
+
+11. Use the post-processing script:
+   - `scripts/patch_pdf_accessibility.py <pdf>`
+12. This script should generate a sibling `*.accessible.pdf` that:
+   - adds `/Contents` to visible link annotations
+   - injects XMP metadata with PDF/UA identification
+13. Run `scripts/check_pdf_accessibility.py` on the patched PDF.
+14. If artifact failures still remain, inspect the PDF structure directly.
+    - Generate a fuller veraPDF JSON dump with a higher `--maxfailuresdisplayed` so you do not mistake the first few example pages for the full failure set.
+    - Inspect the failing page content streams and look for repeated renderer boilerplate such as:
+      - white canvas/setup fill blocks
+      - repeated page-number/footer blocks
+      - other decorative repeated objects emitted outside the structure tree
+    - If those objects are clearly decorative or repeated page chrome, patch the PDF so they are marked as `/Artifact` rather than deleting meaningful content.
+    - Re-run the accessibility checker after each such patch.
+15. Report the delta between:
+   - original PDF
+   - markdown-improved PDF
+   - patched accessible PDF
+
+Expected final deliverables:
+
+- Updated Marp markdown source if source-level improvements were made.
+- Accessibility reports for the relevant PDF versions.
+- If needed, a patched `*.accessible.pdf`.
+- A concise explanation of:
+  - what was fixed in source
+  - what was fixed only by PDF post-processing
+  - what still remains and why
+  - whether any remaining problem was a real content issue or just untagged renderer boilerplate
+
+When reporting findings:
+
+- Explain accessibility issues like you are talking to a smart high-school student with no prior PDF accessibility background.
+- Be explicit about whether `FAIL` means formal PDF/UA non-compliance versus practical usability.
+- Prefer concrete examples from the report over generic accessibility advice.
+- If a summarized report only shows a few example pages, say that explicitly and verify whether the pattern actually applies more broadly before concluding the problem is localized.
+
+Do not assume the first report is the end state. The task is an iterative loop:
+- inspect
+- report
+- fix source
+- rerender
+- recheck
+- isolate exporter limitations
+- patch the PDF if necessary
+- inspect PDF objects directly if necessary
+- rerun checks
+- summarize what remains
