@@ -1,6 +1,6 @@
 # Accessible Slides Agent Setup
 
-This directory is a lightweight workspace for collaborating with an AI agent to review and improve the accessibility of slide decks.
+This directory setup is a lightweight workspace for collaborating with an AI agent to review and improve the accessibility of slide decks.
 
 It is intended for instructors who build slides from LaTeX, Markdown, or similar text-based sources and then compile those sources to PDF for review.
 
