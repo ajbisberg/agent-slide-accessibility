@@ -63,6 +63,7 @@ Generally this can be accomplished in a "sandboxed" mode for the agent, i.e. it 
 
 ## Results
 
-VeraPDF generates an accessibility score out of 100. In general this setup has gotten my slides from the mid 90s to 100 consistently. 
+VeraPDF generates an accessibility score out of 100. In general this setup has gotten my slides from the mid 90s to 100 consistently.
+Although this may not sound like a huge improvement they sill technically "fail" accessibility.
 100/100 on VeraPDF seems to also pass Canvas's checker. 
 All slides are getting 100% on Canvas as well if they meet the full pass requirements from VeraPDF. 
